@@ -21,7 +21,6 @@ const storage = {
   loadPluginData: async function () {
     try {
       const jsonFile = await fs.createEntryWithUrl(`plugin-data:/${this.pluginDataFile}`, {overwrite: true});
-      console.log("is file? " + jsonFile.isFile);
       const fileContent = await jsonFile.read();
       this.pluginData = JSON.parse(fileContent);
     } catch (e) {
