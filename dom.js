@@ -1,3 +1,6 @@
+/**
+ * Bunch of helper methods to work with dom & automatic collection of references & events handling.
+ */
 const dom = {
   hasHandler: function (handler) {
     if (typeof handler !== "object") {
