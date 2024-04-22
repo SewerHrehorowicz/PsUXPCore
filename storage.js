@@ -5,7 +5,7 @@ const storage = {
 
   pluginData: {},
 
-  getOrCreateFolder: async function(path) {
+  getOrCreateFolder: async function (path) {
     try {
       await fs.getEntryWithUrl(path);
     } catch (e) {
@@ -20,7 +20,7 @@ const storage = {
 
   loadPluginData: async function () {
     try {
-      const jsonFile = await fs.createEntryWithUrl(`plugin-data:/${this.pluginDataFile}`, {overwrite: true});
+      const jsonFile = await fs.createEntryWithUrl(`plugin-data:/${this.pluginDataFile}`, { overwrite: true });
       const fileContent = await jsonFile.read();
       this.pluginData = JSON.parse(fileContent);
     } catch (e) {
@@ -43,6 +43,29 @@ const storage = {
     } catch (e) {
       console.error("saving data error: " + e);
     }
+  },
+
+  /**
+   * Allows safely accessing nested keys in pluginData. It returns null if fails to find key at any depth level.
+   * @param {*} address - ex "some.nested.keys"
+   * @returns 
+   */
+  getPluginData: function (address) {
+    let keys = address.split(".");
+    let data = this.pluginData;
+    let addrString = "";
+
+    for (let i = 0; i < keys.length; i++) {
+      let key = keys[i];
+      let sep = i == 0 ? "" : ".";
+      data = data[key];
+      addrString += sep + key;
+      if (typeof data == "undefined") {
+        console.warn(`No plugin data found for key ${addrString}`);
+        return null;
+      }    
+    }
+    return data;
   }
 }
 
