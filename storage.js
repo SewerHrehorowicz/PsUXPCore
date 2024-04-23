@@ -63,9 +63,46 @@ const storage = {
       if (typeof data == "undefined") {
         console.warn(`No plugin data found for key ${addrString}`);
         return null;
-      }    
+      }
     }
     return data;
+  },
+
+  /**
+   * Sets plugin data safely, and creates necessary structure if required.
+   * Automatically saves data to file.
+   * @param {*} address 
+   * @param {*} data 
+   */
+  setPluginData: async function (address, data) {
+    let keys = address.split(".");
+    let pluginData = this.pluginData;
+
+    for (let i = 0; i < keys.length; i++) {
+      let key = keys[i];
+      if (i === keys.length - 1) {
+        pluginData[key] = data;
+      } else {
+        if (typeof pluginData[key] === "undefined") {
+          pluginData[key] = {};
+        }
+        pluginData = pluginData[key];
+      }
+    }
+
+    await this.savePluginData();
+  },
+
+  /**
+   * Tries to get plugin data, and if not found, returns default value;
+   * @param {*} address 
+   * @param {*} fallbackValue 
+   * @returns 
+   */
+  getPluginDataSafe: function (address, fallbackValue) {
+    let data = this.getPluginData(address);
+    if (data == null)
+      return fallbackValue;
   }
 }
 
