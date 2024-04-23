@@ -103,6 +103,7 @@ const storage = {
     let data = this.getPluginData(address);
     if (data == null)
       return fallbackValue;
+    return data;
   }
 }
 
