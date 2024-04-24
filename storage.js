@@ -8,6 +8,12 @@ const storage = {
 
   documentData: {},
 
+  getDocPath: function () {
+    if (app.activeDocument == null)
+      return null;
+    return app.activeDocument.path;
+  },
+
   /**
    * Returns unique, persistent, transferrable id of document, stored in meta description.
    * It attepmts to load it first, for safety (in case it's called before loadDocumentData).
@@ -21,6 +27,7 @@ const storage = {
       const uniqueId = randomString + timestamp;
       this.documentData.id = uniqueId;
       await this.saveDocumentData();
+      // await app.activeDocument.save(); need to save document so id is not lost
     }
     return this.documentData.id;
   },
@@ -30,6 +37,9 @@ const storage = {
    * Call it always on select, save, open, close, make 
    */
   loadDocumentData: async function () {
+    if (this.getDocPath() == null) {
+      this.documentData = {};
+    }
     try {
       async function getDescription() {
         let result;
@@ -47,7 +57,7 @@ const storage = {
         this.documentData = JSON.parse(meta[0].fileInfo.caption);
       }
     } catch (e) {
-      console.error(e);
+      console.dir(e);
     }
   },
 
@@ -112,14 +122,9 @@ const storage = {
     }
   },
 
-  /**
-   * Allows safely accessing nested keys in pluginData. It returns null if fails to find key at any depth level.
-   * @param {*} address - ex "some.nested.keys"
-   * @returns 
-   */
-  getPluginData: function (address) {
+  getData: function (address, dataObject) {
     let keys = address.split(".");
-    let data = this.pluginData;
+    let data = dataObject;
     let addrString = "";
 
     for (let i = 0; i < keys.length; i++) {
@@ -135,6 +140,51 @@ const storage = {
     return data;
   },
 
+  getDataSafe: function (address, dataObject, fallbackValue) {
+    let data = this.getData(address, dataObject);
+    if (data == null)
+      return fallbackValue;
+    return data;
+  },
+
+  setData: async function (address, data, dataObject) {
+    let keys = address.split(".");
+
+    for (let i = 0; i < keys.length; i++) {
+      let key = keys[i];
+      if (i === keys.length - 1) {
+        dataObject[key] = data;
+      } else {
+        if (typeof dataObject[key] === "undefined") {
+          dataObject[key] = {};
+        }
+        dataObject = dataObject[key];
+      }
+    }
+  },
+
+  getDocumentData: function (address) {
+    return this.getData(address, this.documentData);
+  },
+
+  getDocumentDataSafe: function (adress, fallbackValue) {
+    return this.getDataSafe(adress, this.documentData, fallbackValue);
+  },
+
+  setDocumentData: async function (address, data) {
+    this.setData(address, data, this.documentData);
+    await this.saveDocumentData();
+  },
+
+  /**
+   * Allows safely accessing nested keys in pluginData. It returns null if fails to find key at any depth level.
+   * @param {*} address - ex "some.nested.keys"
+   * @returns 
+   */
+  getPluginData: function (address) {
+    return this.getData(address, this.pluginData);
+  },
+
   /**
    * Sets plugin data safely, and creates necessary structure if required.
    * Automatically saves data to file.
@@ -142,21 +192,7 @@ const storage = {
    * @param {*} data 
    */
   setPluginData: async function (address, data) {
-    let keys = address.split(".");
-    let pluginData = this.pluginData;
-
-    for (let i = 0; i < keys.length; i++) {
-      let key = keys[i];
-      if (i === keys.length - 1) {
-        pluginData[key] = data;
-      } else {
-        if (typeof pluginData[key] === "undefined") {
-          pluginData[key] = {};
-        }
-        pluginData = pluginData[key];
-      }
-    }
-
+    this.setData(address, data, this.pluginData);
     await this.savePluginData();
   },
 
@@ -167,10 +203,11 @@ const storage = {
    * @returns 
    */
   getPluginDataSafe: function (address, fallbackValue) {
-    let data = this.getPluginData(address);
+    return this.getDataSafe(address, this.pluginData, fallbackValue);
+    /*let data = this.getPluginData(address);
     if (data == null)
       return fallbackValue;
-    return data;
+    return data;*/
   }
 }
 
