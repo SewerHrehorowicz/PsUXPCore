@@ -1,4 +1,5 @@
 const fs = require('uxp').storage.localFileSystem;
+const app = require("photoshop").app;
 
 const storage = {
   pluginDataFile: "pluginData.json",
@@ -7,18 +8,27 @@ const storage = {
 
   documentData: {},
 
-  // @todo get rid of async?
-  getOrCreateDocumentId: async function () {
+  /**
+   * Returns unique, persistent, transferrable id of document, stored in meta description.
+   * It attepmts to load it first, for safety (in case it's called before loadDocumentData).
+   * @returns unique string
+   */
+  getDocumentId: async function () {
     await this.loadDocumentData();
     if (typeof this.documentData.id === "undefined") {
       const randomString = Math.random().toString(36).substring(2, 10);
       const timestamp = Date.now().toString(36);
       const uniqueId = randomString + timestamp;
       this.documentData.id = uniqueId;
+      await this.saveDocumentData();
     }
     return this.documentData.id;
   },
 
+  /**
+   * Loads data transferrable with document, stored in meta description.
+   * Call it always on select, save, open, close, make 
+   */
   loadDocumentData: async function () {
     try {
       async function getDescription() {
@@ -32,7 +42,7 @@ const storage = {
       let meta = await require("photoshop").core.executeAsModal(getDescription, { "commandName": "Action Commands" });
       let caption = meta[0].fileInfo.caption;
       if (typeof caption === "undefined") {
-        this.documentData = {};
+        this.documentData = {}; // creates empty object so it's possible to later write data
       } else {
         this.documentData = JSON.parse(meta[0].fileInfo.caption);
       }
@@ -42,7 +52,6 @@ const storage = {
   },
 
   saveDocumentData: async function (obj) {
-    await this.getOrCreateDocumentId();
     let stringObj = JSON.stringify(this.documentData);
     if (typeof obj !== "undefined")
       stringObj = JSON.stringify(obj);
@@ -73,6 +82,9 @@ const storage = {
     return newPath.replace(/^([A-Z]):/i, (match, driveLetter) => `file:/${driveLetter.toLowerCase()}:`);
   },
 
+  /**
+   * Loads plugin data and should be called only once at start.
+   */
   loadPluginData: async function () {
     try {
       const jsonFile = await fs.createEntryWithUrl(`plugin-data:/${this.pluginDataFile}`, { overwrite: true });
