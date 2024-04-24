@@ -55,6 +55,7 @@ const storage = {
         this.documentData = {}; // creates empty object so it's possible to later write data
       } else {
         this.documentData = JSON.parse(meta[0].fileInfo.caption);
+        console.log(`${app.activeDocument.name} document data found and loaded`);
       }
     } catch (e) {
       console.dir(e);
@@ -133,7 +134,7 @@ const storage = {
       data = data[key];
       addrString += sep + key;
       if (typeof data == "undefined") {
-        console.warn(`No plugin data found for key ${addrString}`);
+        console.warn(`No data found for key ${addrString}`);
         return null;
       }
     }
@@ -204,10 +205,6 @@ const storage = {
    */
   getPluginDataSafe: function (address, fallbackValue) {
     return this.getDataSafe(address, this.pluginData, fallbackValue);
-    /*let data = this.getPluginData(address);
-    if (data == null)
-      return fallbackValue;
-    return data;*/
   }
 }
 

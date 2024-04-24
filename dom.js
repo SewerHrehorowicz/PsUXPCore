@@ -25,19 +25,36 @@ const dom = {
     handler.refs[refName] = elem;
   },
 
+  handleActionType: function (handler, type) {
+    try {
+      if (!this.hasHandler(handler))
+        return;
+      const selector = type == "click" ? "[data-action]" : `[data-action-${type}]`;
+      const actionType = type == "click" ? "action" : "action" + type[0].toUpperCase() + type.slice(1);
+      const elems = document.querySelectorAll(selector);
+      elems.forEach(elem => {
+        const actionName = elem.dataset[actionType];
+        if (typeof handler[actionName] === "undefined") {
+          console.error(`No matching function found for ${actionName} in ${handler.constructor.name}`);
+        } else {
+          if (type == "init") { // init action passes element, not event
+            handler[actionName](elem);
+          } else {
+            elem.addEventListener(type, handler[actionName].bind(handler));
+          }
+          
+          this.handleRef(elem, handler, actionName);
+        }
+      });
+    } catch (e) {
+      console.error("actions handling error " + e);
+    }
+  },
+
   handleActions: function (handler) {
-    if (!this.hasHandler(handler))
-      return;
-    const elems = document.querySelectorAll("[data-action]")
-    elems.forEach(elem => {
-      const funcName = elem.dataset.action;
-      if (typeof handler[funcName] === "undefined") {
-        console.error(`No matching function found for ${funcName} in ${handler.constructor.name}`);
-      } else {
-        elem.addEventListener("click", handler[funcName].bind(handler));
-        this.handleRef(elem, handler, funcName);
-      }
-    });
+    this.handleActionType(handler, "init"); // @todo we probably don't need it
+    this.handleActionType(handler, "click");
+    this.handleActionType(handler, "input");
   },
 
   handleRefs: function (handler) {
