@@ -5,6 +5,61 @@ const storage = {
 
   pluginData: {},
 
+  documentData: {},
+
+  // @todo get rid of async?
+  getOrCreateDocumentId: async function () {
+    await this.loadDocumentData();
+    if (typeof this.documentData.id === "undefined") {
+      const randomString = Math.random().toString(36).substring(2, 10);
+      const timestamp = Date.now().toString(36);
+      const uniqueId = randomString + timestamp;
+      this.documentData.id = uniqueId;
+    }
+    return this.documentData.id;
+  },
+
+  loadDocumentData: async function () {
+    try {
+      async function getDescription() {
+        let result;
+        let psAction = require("photoshop").action;
+        let command = [
+          { "_obj": "get", "_target": [{ "_property": "fileInfo", "_ref": "property" }, { "_enum": "ordinal", "_ref": "document", "_value": "targetEnum" }] }
+        ];
+        return result = await psAction.batchPlay(command, {});
+      }
+      let meta = await require("photoshop").core.executeAsModal(getDescription, { "commandName": "Action Commands" });
+      let caption = meta[0].fileInfo.caption;
+      if (typeof caption === "undefined") {
+        this.documentData = {};
+      } else {
+        this.documentData = JSON.parse(meta[0].fileInfo.caption);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
+  saveDocumentData: async function (obj) {
+    await this.getOrCreateDocumentId();
+    let stringObj = JSON.stringify(this.documentData);
+    if (typeof obj !== "undefined")
+      stringObj = JSON.stringify(obj);
+    async function setDescription() {
+      let result;
+      let psAction = require("photoshop").action;
+
+      let command = [
+        { "_obj": "set", "_target": [{ "_property": "fileInfo", "_ref": "property" }, { "_enum": "ordinal", "_ref": "document", "_value": "targetEnum" }], "to": { "_obj": "fileInfo", "caption": stringObj } }
+      ];
+      result = await psAction.batchPlay(command, {});
+    }
+
+    await require("photoshop").core.executeAsModal(setDescription, { "commandName": "Action Commands" });
+
+  },
+
   getOrCreateFolder: async function (path) {
     try {
       await fs.getEntryWithUrl(path);
