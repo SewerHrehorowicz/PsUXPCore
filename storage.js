@@ -1,5 +1,6 @@
 const fs = require('uxp').storage.localFileSystem;
 const app = require("photoshop").app;
+const fn = require("./functions.js");
 
 const storage = {
   pluginDataFile: "pluginData.json",
@@ -22,12 +23,11 @@ const storage = {
   getDocumentId: async function () {
     await this.loadDocumentData();
     if (typeof this.documentData.id === "undefined") {
-      const randomString = Math.random().toString(36).substring(2, 10);
+      /*const randomString = Math.random().toString(36).substring(2, 10);
       const timestamp = Date.now().toString(36);
-      const uniqueId = randomString + timestamp;
-      this.documentData.id = uniqueId;
+      const uniqueId = randomString + timestamp;*/
+      this.documentData.id = fn.generateUniqueId();//uniqueId;
       await this.saveDocumentData();
-      // await app.activeDocument.save(); need to save document so id is not lost
     }
     return this.documentData.id;
   },
