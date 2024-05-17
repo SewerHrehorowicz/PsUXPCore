@@ -4,12 +4,32 @@
 const templatesExtension = {
   templates: {},
 
-  cloneTemplate: function(name, container) {
+  cloneTemplate: function(name, variables, container) {
     let template = this.templates[name];
     if (typeof template !== "object") {
       console.error(`Trying to clone "${name}" template, but it doesn't exist in ${this.name}`);
     }
     let clone = template.cloneNode(true);
+    clone.classList.add(clone.dataset.template);
+    clone.removeAttribute("data-template");
+    
+    // handle variables if any passed
+    if (typeof variables === "object") {
+      for (let key in variables) {
+        let value = variables[key];
+        let node = clone.querySelector(`[data-variable="${key}"]`);
+        if (typeof node === "object")
+          node.innerHTML = value;
+      }
+    }
+
+    let actions = clone.querySelectorAll(`[data-action]`);
+    actions.forEach(action => {
+      let actionName = action.dataset.action;
+      // common function to handle individual action in dom, to be implemented
+      console.log(`trying to handle ${actionName} for ${this.name}`);
+    })
+
     if (typeof container === "object") {
       container.appendChild(clone);
     } else {
