@@ -1,7 +1,42 @@
 /**
+ * Methods for handling templates
+ */
+const templatesExtension = {
+  templates: {},
+
+  cloneTemplate: function(name, container) {
+    let template = this.templates[name];
+    if (typeof template !== "object") {
+      console.error(`Trying to clone "${name}" template, but it doesn't exist in ${this.name}`);
+    }
+    let clone = template.cloneNode(true);
+    if (typeof container === "object") {
+      container.appendChild(clone);
+    } else {
+      return clone;
+    }
+  }
+};
+
+/**
  * Bunch of helper methods to work with dom & automatic collection of references & events handling.
  */
 const dom = {
+  handlersRegistry: {},
+
+  extend: function(handler, extension) {
+    for (let each in extension) {
+      handler[each] = extension[each];
+    }
+  },
+
+  registerHandler: function (handler, name = handler.constructor.name) {
+    handler.name = name;
+    this.handlersRegistry[name] = handler;
+    this.extend(handler, templatesExtension);
+    this.handleTemplates(name);
+  },
+
   hasHandler: function (handler) {
     if (typeof handler !== "object") {
       console.error(handler.constructor.name + " is invalid handler. You need to pass object.");
@@ -42,7 +77,7 @@ const dom = {
           } else {
             elem.addEventListener(type, handler[actionName].bind(handler));
           }
-          
+
           this.handleRef(elem, handler, actionName);
         }
       });
@@ -64,7 +99,28 @@ const dom = {
     elems.forEach(elem => {
       this.handleRef(elem, handler);
     });
+  },
+
+  handleTemplates: function (handlerName) {
+    console.log("trying handle templates");
+    const templatesRoots = document.querySelectorAll(`[data-templates-for="${handlerName}"]`);
+    templatesRoots.forEach(templatesRoot => {
+      let handler = this.handlersRegistry[handlerName];
+      if (typeof handler !== "undefined") { // how to check if it's valid handler? proper handler can have properties and methods
+        console.log(`trying to handle templates for ${handlerName}`);
+        let templates = templatesRoot.querySelectorAll(`[data-template]`);
+        templates.forEach(template => {
+          console.log("trying to register template " + template.dataset.template);
+          if (typeof handler.templates !== "object")
+            handler.templates = {};
+          handler.templates[template.dataset.template] = template;
+          
+        });
+      } else {
+        console.error(`You're trying to handle templates for ${handlerName}, but there's no handler assiciated with it. Perhaps you forgot for call dom.registerHandler(${handlerName})?`)
+      }
+    });
   }
-}
+};
 
 module.exports = dom;
