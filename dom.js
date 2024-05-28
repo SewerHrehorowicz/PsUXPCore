@@ -99,6 +99,8 @@ const dom = {
   handleActionsRecursively: function ({elem, handler, template} = {}) {
     for (let key in elem.dataset) {
       if (key.startsWith("action")) {
+        console.log(`handle acrions recursively for ${elem.tag}`);
+        console.dir(elem);
         const splittedType = key.split("action")[1];
         const type = splittedType == "" ? "click" : splittedType.toLowerCase();
         const action = elem.dataset[key];
@@ -133,11 +135,13 @@ const dom = {
   */
   handleActionForElem: function ({ handler, action, elem, type, template } = {}) {
     try {
+      console.log(`Handling ${type} action ${action} for ${elem.tagName} elem`);
       if (typeof handler === "undefined") throw "no handler passed";
       if (typeof handler !== "object") throw "handler is not an object";
       if (typeof handler[action] !== "function") throw `Missing ${handler.name}.${action}() action.`;
       elem.template = template;
       elem.addEventListener(type, handler[action].bind(handler));
+      this.handleRef(elem, handler, action);
     } catch (e) {
       console.error("error handling action: " + e);
     }
@@ -181,6 +185,7 @@ const dom = {
   },
 
   // internal function
+  // @todo example usage
   handleTemplates: function (handlerName) {
     console.log("trying handle templates");
     const templatesRoots = document.querySelectorAll(`[data-templates-for="${handlerName}"]`);

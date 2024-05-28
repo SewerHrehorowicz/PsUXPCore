@@ -23,6 +23,23 @@ const functions = {
                     return found;
             }
         }
+    },
+
+    findChildLayer: function(rootLayer, childName) {
+        for (let i = 0; i < rootLayer.layers.length; i++) {
+            let found = rootLayer.layers[i];
+            if (found.name == childName) {
+                console.log(`found child layer ${childName} in ${rootLayer.name}`);
+                return found;
+            }
+        }
+    },
+
+    getLayerCenter: function(layer) {
+        return {
+            x: layer.bounds._right - layer.bounds.width / 2,
+            y: layer.bounds._bottom - layer.bounds.height / 2
+        }
     }
 }
 
