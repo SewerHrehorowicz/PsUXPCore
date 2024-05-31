@@ -99,8 +99,6 @@ const dom = {
   handleActionsRecursively: function ({elem, handler, template} = {}) {
     for (let key in elem.dataset) {
       if (key.startsWith("action")) {
-        console.log(`handle acrions recursively for ${elem.tag}`);
-        console.dir(elem);
         const splittedType = key.split("action")[1];
         const type = splittedType == "" ? "click" : splittedType.toLowerCase();
         const action = elem.dataset[key];
@@ -135,7 +133,6 @@ const dom = {
   */
   handleActionForElem: function ({ handler, action, elem, type, template } = {}) {
     try {
-      console.log(`Handling ${type} action ${action} for ${elem.tagName} elem`);
       if (typeof handler === "undefined") throw "no handler passed";
       if (typeof handler !== "object") throw "handler is not an object";
       if (typeof handler[action] !== "function") throw `Missing ${handler.name}.${action}() action.`;
@@ -166,13 +163,10 @@ const dom = {
    * @returns 
    */
   handleRef: function (elem, handler, refName) {
-    console.log("handling refs for elem " + elem.innerText);
-    console.dir(elem);
     if (!handler.refs)
       handler.refs = {};
     refName ||= elem.dataset.ref;
     handler.refs[refName] = elem;
-    console.dir(handler);
   },
 
   handleRefs: function (handler, container = document) {
@@ -187,15 +181,12 @@ const dom = {
   // internal function
   // @todo example usage
   handleTemplates: function (handlerName) {
-    console.log("trying handle templates");
     const templatesRoots = document.querySelectorAll(`[data-templates-for="${handlerName}"]`);
     templatesRoots.forEach(templatesRoot => {
       let handler = this.handlersRegistry[handlerName];
       if (typeof handler !== "undefined") { // how to check if it's valid handler? proper handler can have properties and methods
-        console.log(`trying to handle templates for ${handlerName}`);
         let templates = templatesRoot.querySelectorAll(`[data-template]`);
         templates.forEach(template => {
-          console.log("trying to register template " + template.dataset.template);
           if (typeof handler.templates !== "object")
             handler.templates = {};
           handler.templates[template.dataset.template] = template;

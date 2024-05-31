@@ -15,7 +15,6 @@ const functions = {
         for (let i = 0; i < layers.length; i++) {
             let layer = layers[i];
             if (layer.id === id && layer.name === name) {
-                console.log(`found ${id} ${name}`);
                 return layer;
             } else if (layer.kind === "group") {
                 let found = this.getLayerByIdAndName(id, name, layer.layers);
@@ -29,7 +28,6 @@ const functions = {
         for (let i = 0; i < rootLayer.layers.length; i++) {
             let found = rootLayer.layers[i];
             if (found.name == childName) {
-                console.log(`found child layer ${childName} in ${rootLayer.name}`);
                 return found;
             }
         }
