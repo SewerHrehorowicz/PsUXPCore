@@ -22,7 +22,7 @@ const templatesExtension = {
    * Recursively attaches event listeners to elements and their descendants based on data-action attributes.
    * Stores references within the cloned template using `dom.handleRefs` for access in event handlers.
    */
-  cloneTemplate: function ({name, variables, container} = {}) {
+  cloneTemplate: function ({name, refs, container} = {}) {
     let template = this.templates[name];
     if (typeof template !== "object") {
       console.error(`Trying to clone "${name}" template, but it doesn't exist in ${this.name}`);
@@ -31,26 +31,32 @@ const templatesExtension = {
     templateClone.classList.add(templateClone.dataset.template);
     templateClone.removeAttribute("data-template");
 
-    // handle variables if any passed
-    if (typeof variables === "object") {
-      for (let key in variables) {
-        let value = variables[key];
-        let node = templateClone.querySelector(`[data-variable="${key}"]`);
-        if (typeof node === "object")
-          node.innerHTML = value;
-      }
-    }
-    templateClone.variables = variables; // store variables to access them later
-
     dom.handleRefs(templateClone, templateClone); // also store refs for templace, so they can be accessed in event handlers
-
     dom.handleActionsRecursively({elem: templateClone, handler: this, template: templateClone});
+
+    this.updateTemplate({template: templateClone, refs: refs});
 
     if (typeof container === "object") {
       container.appendChild(templateClone);
     } else {
       return templateClone;
     }
+  },
+
+  // updated refs of template with passed values
+  updateTemplate: function({template, refs}) {
+    console.log("updating refs:");
+    console.dir(refs);
+    if (typeof refs === "object") {
+      for (let key in refs) {
+        let value = refs[key];
+        template.refs[key].innerText = value;
+      }
+    }
+  },
+
+  getTemplateRefValue: function({template, ref}) {
+    return template.refs[ref].innerText;
   }
 };
 
