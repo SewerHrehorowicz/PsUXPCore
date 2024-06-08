@@ -28,6 +28,7 @@ const templatesExtension = {
       console.error(`Trying to clone "${name}" template, but it doesn't exist in ${this.name}`);
     }
     let templateClone = template.cloneNode(true);
+    templateClone.name = name;
     templateClone.classList.add(templateClone.dataset.template);
     templateClone.removeAttribute("data-template");
 
@@ -45,7 +46,7 @@ const templatesExtension = {
 
   // updated refs of template with passed values
   updateTemplate: function({template, refs}) {
-    console.log("updating refs:");
+    console.log(`updating template ${template.name}`);
     console.dir(refs);
     if (typeof refs === "object") {
       for (let key in refs) {
@@ -55,9 +56,13 @@ const templatesExtension = {
     }
   },
 
-  getTemplateRefValue: function({template, ref}) {
-    return template.refs[ref].innerText;
-  }
+  getTemplateData: function(template) {
+    let values = {};
+    for (let key in template.refs) {
+      values[key] = template.refs[key].innerText;
+    }
+    return values;
+  },
 };
 
 /**
@@ -73,11 +78,13 @@ const dom = {
   },
 
   // new main function to register handler once & handle all stuff
-  registerHandler: function (handler, name = handler.constructor.name) {
+  registerHandler: function (handler, name = handler.constructor.name, container = document) {
     handler.name = name;
     this.handlersRegistry[name] = handler;
     this.extend(handler, templatesExtension);
     this.handleTemplates(name);
+    this.handleRefs(handler, container);
+    this.handleActions(handler, container);
   },
 
   hasHandler: function (handler) {
@@ -87,8 +94,6 @@ const dom = {
     }
     return true;
   },
-
-  
 
   /**
    * Recursively attaches event listeners to elements and their descendants based on data-action attributes.
