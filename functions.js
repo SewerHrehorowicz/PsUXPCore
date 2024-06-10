@@ -38,6 +38,18 @@ const functions = {
             x: layer.bounds._right - layer.bounds.width / 2,
             y: layer.bounds._bottom - layer.bounds.height / 2
         }
+    },
+
+    /**
+     * Creates picker for folder and returns Url of picked foler.
+     * @param {string} address 
+     * @returns folder Url
+     */
+    async pickFolder(address) {
+      const folder = await fs.getFolder();
+      const folderUrl =  storage.pathToUrl(folder.nativePath);
+      await storage.setPluginData(`${address}.${await storage.getDocumentId()}`, folderUrl);
+      return folderUrl;
     }
 }
 
