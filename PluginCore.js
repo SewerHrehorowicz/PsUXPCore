@@ -17,6 +17,7 @@ class PluginCore {
   }
 
   async init() {
+    
     // common initialization, always needed
     await storage.loadPluginData();
     require('photoshop').action.addNotificationListener([

@@ -22,7 +22,7 @@ const templatesExtension = {
    * Recursively attaches event listeners to elements and their descendants based on data-action attributes.
    * Stores references within the cloned template using `dom.handleRefs` for access in event handlers.
    */
-  cloneTemplate: function ({name, refs, container} = {}) {
+  cloneTemplate: function ({ name, refs, container } = {}) {
     let template = this.templates[name];
     if (typeof template !== "object") {
       console.error(`Trying to clone "${name}" template, but it doesn't exist in ${this.name}`);
@@ -33,9 +33,9 @@ const templatesExtension = {
     templateClone.removeAttribute("data-template");
 
     dom.handleRefs(templateClone, templateClone); // also store refs for templace, so they can be accessed in event handlers
-    dom.handleActionsRecursively({elem: templateClone, handler: this, template: templateClone});
+    dom.handleActionsRecursively({ elem: templateClone, handler: this, template: templateClone });
 
-    this.updateTemplate({template: templateClone, refs: refs});
+    this.updateTemplate({ template: templateClone, refs: refs });
 
     if (typeof container === "object") {
       container.appendChild(templateClone);
@@ -45,9 +45,9 @@ const templatesExtension = {
   },
 
   // updated refs of template with passed values
-  updateTemplate: function({template, refs}) {
-    console.log(`updating template ${template.name}`);
-    console.dir(refs);
+  updateTemplate: function ({ template, refs }) {
+    //console.log(`updating template ${template.name}`);
+    //console.dir(refs);
     if (typeof refs === "object") {
       for (let key in refs) {
         let value = refs[key];
@@ -56,10 +56,13 @@ const templatesExtension = {
     }
   },
 
-  getTemplateData: function(template) {
+  getTemplateData: function ({ template, key }) {
+    if (typeof key === "string")
+      return template.refs[key].innerText;
+
     let values = {};
-    for (let key in template.refs) {
-      values[key] = template.refs[key].innerText;
+    for (let _key in template.refs) {
+      values[_key] = template.refs[_key].innerText;
     }
     return values;
   },
@@ -85,6 +88,7 @@ const dom = {
     this.handleTemplates(name);
     this.handleRefs(handler, container);
     this.handleActions(handler, container);
+    //this.handleContainers(handler);
   },
 
   hasHandler: function (handler) {
@@ -107,17 +111,17 @@ const dom = {
    * This function iterates over all elements and their descendants starting from `elem`. It looks for `data-action-*` attributes on each element and attaches event listeners based on these attributes.
    * Each `data-action-*` attribute specifies an action to be handled by `handler` when the corresponding event (`click` by default) occurs on the element.
    */
-  handleActionsRecursively: function ({elem, handler, template} = {}) {
+  handleActionsRecursively: function ({ elem, handler, template } = {}) {
     for (let key in elem.dataset) {
       if (key.startsWith("action")) {
         const splittedType = key.split("action")[1];
         const type = splittedType == "" ? "click" : splittedType.toLowerCase();
         const action = elem.dataset[key];
         elem.template = template;
-        this.handleActionForElem({ 
-          elem: elem, 
-          handler: handler, 
-          action: action, 
+        this.handleActionForElem({
+          elem: elem,
+          handler: handler,
+          action: action,
           type: type,
           template: template
         });
@@ -125,8 +129,8 @@ const dom = {
     }
 
     Array.from(elem.children).forEach(child => this.handleActionsRecursively({
-      elem: child, 
-      handler: handler, 
+      elem: child,
+      handler: handler,
       template: template
     }));
   },
@@ -144,9 +148,13 @@ const dom = {
   */
   handleActionForElem: function ({ handler, action, elem, type, template } = {}) {
     try {
+      console.log(`handling action for ${handler.name}`);
+      console.dir(handler);
       if (typeof handler === "undefined") throw "no handler passed";
       if (typeof handler !== "object") throw "handler is not an object";
       if (typeof handler[action] !== "function") throw `Missing ${handler.name}.${action}() action.`;
+      if (!this.forThisHandler(elem, handler))
+        return;
       elem.template = template;
       elem.addEventListener(type, handler[action].bind(handler));
       this.handleRef(elem, handler, action);
@@ -162,7 +170,15 @@ const dom = {
    * @param {*} actionsContainer 
    */
   handleActions: function (handler, actionsContainer = document) {
-    this.handleActionsRecursively({elem: actionsContainer, handler: handler});
+    this.handleActionsRecursively({ elem: actionsContainer, handler: handler });
+  },
+
+  forThisHandler(elem, handler) {
+    const elemHandler = elem.dataset.handler
+    if (typeof elemHandler !== "undefined")
+      if (elemHandler != handler.name)
+        return false;
+    return true;
   },
 
   /**
@@ -174,6 +190,8 @@ const dom = {
    * @returns 
    */
   handleRef: function (elem, handler, refName) {
+    if (!this.forThisHandler(elem, handler))
+      return;
     if (!handler.refs)
       handler.refs = {};
     refName ||= elem.dataset.ref;
@@ -186,6 +204,18 @@ const dom = {
     const elems = container.querySelectorAll("[data-ref]")
     elems.forEach(elem => {
       this.handleRef(elem, handler);
+    });
+  },
+
+  // wrap all actions and refs in one container that will be assigned to one handler
+  // so you don't need to add data-handler everywhere
+  // expects handler name so needs to be called from within registerHandler() only,
+  // @todo make private
+  handleContainers(handler) {
+    const query = document.querySelectorAll(`[data-container-for="${handler.name}"]`);
+    query.forEach(container => {
+      this.handleActionsRecursively({ elem: container, handler: handler });
+      this.handleRefs(handler, container);
     });
   },
 
