@@ -29,6 +29,22 @@ const functions = {
     }
   },
 
+  getLayerById: function (id, layersGroup) {
+    let layers = layersGroup || app.activeDocument.layers;
+    for (let i = 0; i < layers.length; i++) {
+      let layer = layers[i];
+      if (layer.id === id) {
+        console.log("found layer by id " + id + ", name: " + layer.name + " (" + layer.id + ")");
+        console.dir(layer);
+        return layer;
+      } else if (layer.kind === "group") {
+        let found = this.getLayerById(id, layer.layers);
+        if (found != null)
+          return found;
+      }
+    }
+  },
+
   getLayerByName(name, layers = app.activeDocument.layers) {
     for (let i = 0; i < layers.length; i++) {
       let layer = layers[i];
@@ -73,9 +89,13 @@ const functions = {
     return app.activeDocument.activeLayers[0];
   },
 
-  getDocumentIndex(id) {
+  // switch to getting index by path, as it's unique identifier
+  getDocumentIndex({id, path}) {
     for (let i = 0; i < app.documents.length; i++) {
-      if (app.documents[i].id === id) {
+      if (typeof path !== "undefined" && app.documents[i].path === path) {
+        return i;
+      }
+      if (typeof id !== "undefined" && app.documents[i].id === id) {
         return i;
       }
     }
@@ -86,8 +106,16 @@ const functions = {
     await require("photoshop").core.executeAsModal(callback, { "commandName": commandName });
   },
 
+  async runModalFunction2({command, commandName}) {
+    async function actionCommands() {
+      await action.batchPlay(command, {});
+    }
+    await this.runModalFunction({ callback: actionCommands, commandName: "closeWithoutSaving" });
+  },
+
+  // switch to getting it by path
   async setActiveDocumentById(id) {
-    let offset = this.getDocumentIndex(app.activeDocument.id) - this.getDocumentIndex(id);
+    let offset = this.getDocumentIndex({id: app.activeDocument.id}) - this.getDocumentIndex({id: id});
     async function actionCommands() {
       let command = { "_obj": "select", "_target": [{ "_offset": offset, "_ref": "document" }], "documentID": id, "forceNotify": true };
       await action.batchPlay([command], {});
@@ -95,40 +123,80 @@ const functions = {
     await this.runModalFunction({ callback: actionCommands, commandName: "setActiveDocumentById" });
   },
 
-  async pasteLayerInto({layerName, containerId}) {
+  // need both name & id
+  async pasteLayerInto({ layerName, containerId }) {
     async function paste() {
       let command = [
-        { "_obj": "paste", "antiAlias": { "_enum": "antiAliasType", "_value": "antiAliasNone" }, "as": { "_class": "pixel" } },
-        { "_obj": "set", "_target": [{ "_enum": "ordinal", "_ref": "layer", "_value": "targetEnum" }], "to": { "_obj": "layer", "name": layerName } },
-        { "_obj": "move", "_target": [{ "_enum": "ordinal", "_ref": "layer", "_value": "targetEnum" }], "adjustment": false, "layerID": [15407], "to": { "_index": 276, "_ref": "layer" }, "version": 5 }
+        { "_obj": "select", "_target": [{ "_name": layerName, "_ref": "layer" }], "layerID": [containerId], "makeVisible": false },
+        { "_obj": "set", "_target": [{ "_property": "selection", "_ref": "channel" }], "to": { "_enum": "ordinal", "_value": "allEnum" } },
+        { "_obj": "delete" },
+        { "_obj": "paste", "antiAlias": { "_enum": "antiAliasType", "_value": "antiAliasNone" }, "as": { "_class": "pixel" } }
       ];
-      await action.batchPlay(command, {});
+      try {
+        await action.batchPlay(command, {});
+      } catch (e) {
+        console.error(`error pasting layer ${layerName} into container ${containerId}: ${e}`);
+      }
+
     }
     await this.runModalFunction({ callback: paste, commandName: "paste" });
   },
 
-  async duplicateAndRasterize(layerName) {
+  async copyRasterizedDuplicate({layerName}) {
     const layerId = this.getLayerId(layerName);
-    async function copyRasterized() {
-      console.log(`Will try to duplicate and rasterize ${layerName} layer with id ${layerId}`);
+    let command = [
+      { "_obj": "select", "_target": [{ "_name": layerName, "_ref": "layer" }], "layerID": [layerId], "makeVisible": false },
+      { "_obj": "show", "null": [{ "_enum": "ordinal", "_ref": "layer", "_value": "targetEnum" }] },
+      { "_obj": "copyToLayer" },
+      { "_obj": "mergeLayersNew" },
+      { "_obj": "set", "_target": [{ "_property": "selection", "_ref": "channel" }], "to": { "_enum": "channel", "_ref": "channel", "_value": "transparencyEnum" } },
+      { "_obj": "copyEvent", "copyHint": "pixels" }
+    ];
+    await this.runModalFunction2({ command: command, commandName: "closeWithoutSaving" });
+  },
+
+  async translateLayer({ layerName, layerID, top, left }) {
+    async function actionCommands() {
       let command = [
-        { "_obj": "select", "_target": [{ "_name": layerName, "_ref": "layer" }], "layerID": [layerId], "makeVisible": false },
-        { "_obj": "show", "null": [{ "_enum": "ordinal", "_ref": "layer", "_value": "targetEnum" }] },
-        { "_obj": "copyToLayer" },
-        { "_obj": "mergeLayersNew" },
-        { "_obj": "set", "_target": [{ "_property": "selection", "_ref": "channel" }], "to": { "_enum": "channel", "_ref": "channel", "_value": "transparencyEnum" } },
-        { "_obj": "copyEvent", "copyHint": "pixels" }
-        // Usuń bieżącego warstwa
-        // {"_obj":"delete","_target":[{"_enum":"ordinal","_ref":"layer","_value":"targetEnum"}],"layerID":[16774]}
+        { "_obj": "select", "_target": [{ "_name": layerName, "_ref": "layer" }], "layerID": [layerID], "makeVisible": false },
+        { "_obj": "move", "_target": [{ "_enum": "ordinal", "_ref": "layer", "_value": "targetEnum" }], "to": { "_obj": "offset", "horizontal": { "_unit": "pixelsUnit", "_value": left }, "vertical": { "_unit": "pixelsUnit", "_value": top } } }
+      ]
+      result = await action.batchPlay(command, {});
+    }
+    await this.runModalFunction({ callback: actionCommands, commandName: "translateActiveLayer" });
+  },
+
+  async translateCurrentLayer({ top, left }) {
+    console.log(`will try to translate layer ${app.activeDocument.activeLayers[0].name} by top: ${top}, left: ${left}`);
+    top = parseInt(top);
+    left = parseInt(left);
+    async function actionCommands() {
+      let command = [
+        { "_obj": "move", "_target": [{ "_enum": "ordinal", "_ref": "layer", "_value": "targetEnum" }], "to": { "_obj": "offset", "horizontal": { "_unit": "pixelsUnit", "_value": top }, "vertical": { "_unit": "pixelsUnit", "_value": left } } }
+      ]
+      result = await action.batchPlay(command, {});
+    }
+    await this.runModalFunction({ callback: actionCommands, commandName: "translateActiveLayer" });
+  },
+
+  async selectlayer({ layerID }) {
+    async function selectlayer() {
+      let command = [
+        { "_obj": "select", "_target": [{ "_name": "stone_24mm", "_ref": "layer" }], "layerID": [layerID], "makeVisible": false }
       ];
       try {
-        result = await action.batchPlay(command, {});
+        action.batchPlay(command, {});
       } catch (e) {
-        console.error("error duplicating layer " + e);
+        console.error(`error translating ${layerID} layer: ${e}`);
       }
 
     }
-    await this.runModalFunction({ callback: copyRasterized, commandName: "copyRasterized" });
+    await this.runModalFunction({ callback: selectlayer, commandName: "selectlayer" });
+  },
+
+  async closeWithoutSaving({documentID}) {
+    let command = [{ "_obj": "close", "documentID": documentID, "forceNotify": true, "saving": { "_enum": "yesNo", "_value": "no" } }];
+    await this.runModalFunction2({ command: command, commandName: "closeWithoutSaving" });
   }
 }
 

@@ -22,11 +22,9 @@ const storage = {
    */
   getDocumentId: async function () {
     await this.loadDocumentData();
+    // there's problem with that - if document is saved as new document, id is intact
     if (typeof this.documentData.id === "undefined") {
-      /*const randomString = Math.random().toString(36).substring(2, 10);
-      const timestamp = Date.now().toString(36);
-      const uniqueId = randomString + timestamp;*/
-      this.documentData.id = fn.generateUniqueId();//uniqueId;
+      this.documentData.id = fn.generateUniqueId();
       await this.saveDocumentData();
     }
     return this.documentData.id;
